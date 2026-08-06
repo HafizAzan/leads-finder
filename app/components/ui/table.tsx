@@ -3,10 +3,17 @@ import React, { useState } from "react";
 import Checkbox from "./checkbox";
 import { TableProps } from "@/app/data/leads-data";
 
-function Table<T extends Record<string, unknown>>({ columns, data }: TableProps<T>) {
+function Table<T extends Record<string, unknown>>({
+  columns,
+  data,
+}: TableProps<T>) {
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
-  const allRowsSelected = data?.length > 0 && selectedRows?.length === data?.length;
-  const someSelectedRows = data?.length > 0 && selectedRows?.length > 0 && selectedRows?.length < data?.length;
+  const allRowsSelected =
+    data?.length > 0 && selectedRows?.length === data?.length;
+  const someSelectedRows =
+    data?.length > 0 &&
+    selectedRows?.length > 0 &&
+    selectedRows?.length < data?.length;
 
   const toggleAll = () => {
     if (allRowsSelected) {
@@ -35,14 +42,21 @@ function Table<T extends Record<string, unknown>>({ columns, data }: TableProps<
               {columns.map((column) => {
                 if (column.isCheckbox) {
                   return (
-                    <th className="w-12 px-4 py-3">
-                      <Checkbox checked={allRowsSelected} indeterminate={someSelectedRows} onChange={toggleAll} />
+                    <th key={String(column.key)} className="w-12 px-4 py-3">
+                      <Checkbox
+                        checked={allRowsSelected}
+                        indeterminate={someSelectedRows}
+                        onChange={toggleAll}
+                      />
                     </th>
                   );
                 }
 
                 return (
-                  <th key={String(column.key)} className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted whitespace-nowrap">
+                  <th
+                    key={String(column.key)}
+                    className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted whitespace-nowrap"
+                  >
                     {column.label}
                   </th>
                 );
@@ -52,18 +66,27 @@ function Table<T extends Record<string, unknown>>({ columns, data }: TableProps<
 
           <tbody>
             {data.map((row, index) => (
-              <tr key={index} className="border-b border-border last:border-0 transition-colors hover:bg-sidebar/60">
+              <tr
+                key={index}
+                className="border-b border-border last:border-0 transition-colors hover:bg-sidebar/60"
+              >
                 {columns.map((column) => {
                   if (column.isCheckbox) {
                     return (
-                      <th className="w-12 px-4 py-3">
-                        <Checkbox checked={selectedRows?.includes(row?.id as number)} onChange={() => specificRow(row?.id as number)} />
-                      </th>
+                      <td key={String(column.key)} className="w-12 px-4 py-3">
+                        <Checkbox
+                          checked={selectedRows?.includes(row?.id as number)}
+                          onChange={() => specificRow(row?.id as number)}
+                        />
+                      </td>
                     );
                   }
 
                   return (
-                    <td key={String(column.key)} className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                    <td
+                      key={String(column.key)}
+                      className="px-4 py-3 text-sm text-foreground whitespace-nowrap"
+                    >
                       {String(row[column.key])}
                     </td>
                   );
