@@ -8,11 +8,13 @@ type LeadLayoutProps = {
 
 function LeadLayout({ children }: LeadLayoutProps) {
   return (
-    <div className="flex">
+    <div className="flex h-screen overflow-hidden">
       <LeadSidebar />
-      <div className="flex-1 flex-col">
+
+      <div className="flex min-w-0 flex-1 flex-col">
         <LeadHeader />
-        {children}
+
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

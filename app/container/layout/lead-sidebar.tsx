@@ -10,7 +10,7 @@ type LeadSidebarItemsProps = {
 
 function LeadSidebar() {
   return (
-    <aside className="w-60 min-h-screen bg-sidebar shadow-md flex flex-col">
+    <aside className="w-60 h-screen bg-sidebar shadow-md flex flex-col border-r border-border">
       <Logo />
 
       <div className="py-2 px-2">

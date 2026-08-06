@@ -14,9 +14,32 @@
 }
 
 body {
-  @apply bg-background text-foreground font-sans;
+  @apply bg-background text-foreground font-sans overflow-hidden;
 }
 
 .container {
   @apply w-[85%] max-w-7xl mx-auto;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #111827;
 }
