@@ -9,11 +9,7 @@ type PaginationProps = {
   onPageChange?: (page: number) => void;
 };
 
-function Pagination({
-  currentPage = 1,
-  totalPages = 20,
-  onPageChange,
-}: PaginationProps) {
+function Pagination({ currentPage = 1, totalPages = 20, onPageChange }: PaginationProps) {
   const getPages = () => {
     if (totalPages <= 3) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -41,50 +37,33 @@ function Pagination({
   const showRightDots = pages[pages.length - 1] < totalPages;
 
   return (
-    <div className="flex items-center justify-between border-t border-border px-4 py-3">
+    <div className="flex items-center justify-between border-t border-border px-4 py-3 mt-1 rounded-2xl">
       <p className="text-sm text-muted">
-        Page <span className="text-foreground">{currentPage}</span> of{" "}
-        <span className="text-foreground">{totalPages}</span>
+        Page <span className="text-foreground">{currentPage}</span> of <span className="text-foreground">{totalPages}</span>
       </p>
 
       <div className="flex items-center gap-1">
-        {/* Previous */}
         <button
           type="button"
           disabled={currentPage === 1}
           onClick={() => handlePageChange(currentPage - 1)}
-          className="
-            flex h-8 w-8 items-center justify-center
-            rounded-md border border-border bg-card
-            text-muted transition-colors
-            hover:bg-sidebar hover:text-foreground
-            disabled:pointer-events-none disabled:opacity-40
-          "
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted transition-colors hover:bg-sidebar hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           aria-label="Previous page"
         >
           <ChevronLeft size={15} />
         </button>
 
-        {/* First page + left dots */}
         {showLeftDots && (
           <>
             <button
               type="button"
               onClick={() => handlePageChange(1)}
-              className="
-                flex h-8 min-w-8 items-center justify-center
-                rounded-md border border-transparent
-                px-2 text-sm text-muted
-                transition-colors
-                hover:border-border hover:bg-sidebar hover:text-foreground
-              "
+              className="flex h-8 min-w-8 items-center justify-center rounded-md border border-transparent px-2 text-sm text-muted transition-colors hover:border-border hover:bg-sidebar hover:text-foreground"
             >
               1
             </button>
 
-            <span className="flex h-8 w-8 items-center justify-center text-muted">
-              ...
-            </span>
+            <span className="flex h-8 w-8 items-center justify-center text-muted">...</span>
           </>
         )}
 
@@ -97,10 +76,7 @@ function Pagination({
               key={page}
               type="button"
               onClick={() => handlePageChange(page)}
-              className={`
-                flex h-8 min-w-8 items-center justify-center
-                rounded-md border px-2 text-sm
-                transition-colors
+              className={`flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-sm transition-colors
                 ${
                   isActive
                     ? "border-border bg-sidebar text-foreground"
@@ -115,9 +91,7 @@ function Pagination({
 
         {showRightDots && (
           <>
-            <span className="flex h-8 w-8 items-center justify-center text-muted">
-              ...
-            </span>
+            <span className="flex h-8 w-8 items-center justify-center text-muted">...</span>
 
             <button
               type="button"

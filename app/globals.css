@@ -21,6 +21,10 @@ body {
   @apply w-[85%] max-w-7xl mx-auto;
 }
 
+button {
+  @apply cursor-pointer;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
