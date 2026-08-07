@@ -5,6 +5,7 @@ import { TableParagraph, TableStatus, TableText } from "../components/common/tab
 
 export interface TableButtons {
   label: string;
+  shortLabel?: string;
   icon?: React.ReactNode;
   onClick?: () => void;
 }

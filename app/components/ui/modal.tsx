@@ -43,7 +43,7 @@ function Modal({ open, onClose, title, description, children, footer, size = "md
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-999 flex items-center justify-center px-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-999 flex items-end justify-center px-3 py-3 sm:items-center sm:px-4" role="dialog" aria-modal="true">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
         onClick={() => {
@@ -56,14 +56,14 @@ function Modal({ open, onClose, title, description, children, footer, size = "md
       <div
         className={`
           relative z-10 w-full ${sizeClasses[size]}
-          overflow-hidden
+          max-h-[90vh] overflow-y-auto
           rounded-xl
           border border-border
           bg-card
           shadow-2xl
         `}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:gap-4 sm:px-5">
           <div className="min-w-0">
             {title && <h2 className="text-base font-semibold text-foreground">{title}</h2>}
             {description && <p className="mt-1 text-sm leading-5 text-muted">{description}</p>}
@@ -86,8 +86,12 @@ function Modal({ open, onClose, title, description, children, footer, size = "md
           </button>
         </div>
 
-        {children && <div className="px-5 py-5">{children}</div>}
-        {footer && <div className="flex items-center justify-end gap-2 border-t border-border bg-sidebar/30 px-5 py-3">{footer}</div>}
+        {children && <div className="px-4 py-4 sm:px-5 sm:py-5">{children}</div>}
+        {footer && (
+          <div className="flex flex-col-reverse items-stretch gap-2 border-t border-border bg-sidebar/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

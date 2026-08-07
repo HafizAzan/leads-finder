@@ -27,21 +27,21 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
 
   return (
     <div className="w-full overflow-hidden rounded-xl border border-border bg-card">
-      <div className="w-full overflow-x-auto">
+      <div className="-mx-px w-full overflow-x-auto overscroll-x-contain">
         <table className="w-full min-w-175 text-left">
           <thead>
             <tr className="border-b border-border bg-sidebar">
               {columns.map((column) => {
                 if (column.isCheckbox) {
                   return (
-                    <th key={String(column.key)} className="w-12 px-4 py-3">
+                    <th key={String(column.key)} className="sticky left-0 z-10 w-12 bg-sidebar px-3 py-3 sm:px-4">
                       <Checkbox checked={allRowsSelected} indeterminate={someSelectedRows} onChange={toggleAll} />
                     </th>
                   );
                 }
 
                 return (
-                  <th key={String(column.key)} className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted whitespace-nowrap">
+                  <th key={String(column.key)} className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-muted whitespace-nowrap sm:px-4">
                     {column.label}
                   </th>
                 );
@@ -51,11 +51,11 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
 
           <tbody>
             {data.map((row, index) => (
-              <tr key={index} className="border-b border-border last:border-0 transition-colors hover:bg-sidebar/60">
+              <tr key={index} className="group border-b border-border last:border-0 transition-colors hover:bg-sidebar/60">
                 {columns.map((column) => {
                   if (column.isCheckbox) {
                     return (
-                      <td key={String(column.key)} className="w-12 px-4 py-3">
+                      <td key={String(column.key)} className="sticky left-0 z-10 w-12 bg-card px-3 py-3 transition-colors group-hover:bg-sidebar/60 sm:px-4">
                         <Checkbox checked={selectedRows?.includes(row?.id as number)} onChange={() => specificRow(row?.id as number)} />
                       </td>
                     );
@@ -63,7 +63,7 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
 
                   if (column.isActions) {
                     return (
-                      <td key={String(column.key)} className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                      <td key={String(column.key)} className="px-3 py-3 text-sm text-foreground whitespace-nowrap sm:px-4">
                         {column.cell?.(row)}
                       </td>
                     );
@@ -71,14 +71,14 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
 
                   if (row?.[column.key] && typeof row?.[column.key] === "object" && React.isValidElement(row?.[column.key])) {
                     return (
-                      <td key={String(column.key)} className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                      <td key={String(column.key)} className="px-3 py-3 text-sm text-foreground whitespace-nowrap sm:px-4">
                         {row?.[column.key] as React.ReactNode}
                       </td>
                     );
                   }
 
                   return (
-                    <td key={String(column.key)} className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                    <td key={String(column.key)} className="px-3 py-3 text-sm text-foreground whitespace-nowrap sm:px-4">
                       {String(row[column.key])}
                     </td>
                   );

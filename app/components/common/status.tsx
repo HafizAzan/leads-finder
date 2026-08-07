@@ -36,18 +36,23 @@ function Status({ type }: StatusProps) {
 
   return (
     <div
-      className={`px-3 py-1.5 rounded-full flex items-center gap-x-2 ${status.wrapper}`}
+      className={`flex items-center gap-x-2 rounded-full px-2 py-1.5 sm:px-3 ${status.wrapper}`}
     >
       <div
-        className={`w-2 h-2 rounded-full ${status.dot} ${
+        className={`size-2 shrink-0 rounded-full ${status.dot} ${
           type === "success" ? "animate-pulse" : ""
         }`}
       />
 
       <Typography
+        text={type === "success" ? "Online" : "Failed"}
+        variants="span"
+        className={`font-medium text-[10px]! uppercase tracking-wide sm:hidden ${status.text}`}
+      />
+      <Typography
         text={status.label}
         variants="span"
-        className={`font-medium text-[11px]! uppercase tracking-wide ${status.text}`}
+        className={`hidden font-medium text-[11px]! uppercase tracking-wide sm:inline ${status.text}`}
       />
     </div>
   );

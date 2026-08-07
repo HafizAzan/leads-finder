@@ -15,7 +15,7 @@ function Search({
   placeholder = "Search leads...",
 }: SearchProps) {
   return (
-    <div className="relative w-full max-w-sm">
+    <div className="relative w-full max-w-none lg:max-w-sm">
       <SearchIcon
         size={17}
         strokeWidth={1.8}

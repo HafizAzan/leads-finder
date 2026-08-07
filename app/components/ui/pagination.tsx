@@ -37,12 +37,12 @@ function Pagination({ currentPage = 1, totalPages = 20, onPageChange }: Paginati
   const showRightDots = pages[pages.length - 1] < totalPages;
 
   return (
-    <div className="flex items-center justify-between border-t border-border px-4 py-3 mt-1 rounded-2xl">
-      <p className="text-sm text-muted">
+    <div className="mt-1 flex flex-col gap-3 rounded-2xl border-t border-border px-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+      <p className="text-center text-sm text-muted sm:text-left">
         Page <span className="text-foreground">{currentPage}</span> of <span className="text-foreground">{totalPages}</span>
       </p>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-center gap-1 sm:justify-end">
         <button
           type="button"
           disabled={currentPage === 1}

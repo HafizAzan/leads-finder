@@ -54,10 +54,12 @@ function Home() {
     selectedRows?.length > 0
       ? [
           {
-            label: `${selectedRows?.length} Leads Selected`,
+            label: `${selectedRows?.length} Selected`,
+            shortLabel: `${selectedRows?.length}`,
           },
           {
             label: "Bulk Delete",
+            shortLabel: "Delete",
             icon: <Trash2 className="size-3.5" />,
             onClick: () => setOpen(true),
           },
@@ -65,37 +67,46 @@ function Home() {
       : [
           {
             label: "Upload CSV",
+            shortLabel: "Upload",
             icon: <Upload className="size-3.5" />,
             onClick: () => {},
           },
           {
             label: "Download CSV",
+            shortLabel: "Download",
             icon: <Download className="size-3.5" />,
             onClick: () => {},
           },
           {
             label: "Generate New Leads",
+            shortLabel: "Generate",
             icon: <UsersRound className="size-3.5" />,
             onClick: () => {},
           },
         ];
 
   return (
-    <section className="px-4 py-4">
-      <div className="flex items-end justify-between pb-4">
+    <section className="px-3 py-3 sm:px-4 sm:py-4">
+      <div className="flex flex-col gap-3 pb-4 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
         <Search onChange={(val: string) => setSearchValue(val)} value={searchValue} />
-        <div className="flex gap-4 bg-card p-2 rounded-sm">
+
+        <div className="flex w-full flex-wrap items-center gap-1 rounded-lg bg-card p-1.5 sm:w-auto sm:gap-2 sm:p-2">
           {tableButtons?.map((single: TableButtons, index: number) => (
-            <div className="flex items-center gap-2" key={index}>
-              {index !== 0 && <div className="h-full w-px bg-white" />}
-              <Button onClick={single.onClick} className="border-transparent p-0! gap-x-1">
-                <span>{single.icon}</span>
-                {single.label}
+            <div className="flex min-w-0 items-center gap-1 sm:gap-2" key={index}>
+              {index !== 0 && <div className="hidden h-5 w-px bg-border sm:block" />}
+              <Button
+                onClick={single.onClick}
+                className="border-transparent px-2! py-1.5! text-xs! gap-x-1 sm:px-3! sm:text-sm!"
+              >
+                {single.icon && <span className="shrink-0">{single.icon}</span>}
+                <span className="sm:hidden">{single.shortLabel ?? single.label}</span>
+                <span className="hidden sm:inline">{single.label}</span>
               </Button>
             </div>
           ))}
         </div>
       </div>
+
       <Table columns={columns} data={currentData} selectedRows={selectedRows} setSelectedRows={setSelectedRows} />
       <Pagination currentPage={page} totalPages={totalPage} onPageChange={onPageChange} />
 
@@ -107,8 +118,10 @@ function Home() {
         size="sm"
         footer={
           <>
-            <Button onClick={onModalClose}>Cancel</Button>
-            <Button onClick={onRowDelete} className="bg-red-600 border-red-600">
+            <Button onClick={onModalClose} className="flex-1 sm:flex-none">
+              Cancel
+            </Button>
+            <Button onClick={onRowDelete} className="flex-1 bg-red-600 border-red-600 sm:flex-none">
               Delete
             </Button>
           </>
