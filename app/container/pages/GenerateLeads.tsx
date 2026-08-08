@@ -6,6 +6,8 @@ import Typography from "@/app/components/ui/typography";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
 import Textarea from "@/app/components/ui/textarea";
+import { useLeads } from "@/app/context/leads-context";
+import { useRouter } from "next/navigation";
 
 type GenerateLeadsForm = {
   category: string;
@@ -24,6 +26,8 @@ const initialForm: GenerateLeadsForm = {
 };
 
 function GenerateLeads() {
+  const router = useRouter();
+  const { addGeneratedLeads } = useLeads();
   const [form, setForm] = useState<GenerateLeadsForm>(initialForm);
 
   const updateField = (field: keyof GenerateLeadsForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -32,6 +36,14 @@ function GenerateLeads() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    addGeneratedLeads({
+      category: form.category.trim(),
+      city: form.city.trim(),
+      country: form.country.trim(),
+      leadLimit: Number(form.leadLimit) || 1,
+      description: form.description.trim() || undefined,
+    });
+    router.push("/leads");
   };
 
   return (

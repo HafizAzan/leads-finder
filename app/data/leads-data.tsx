@@ -1,337 +1,169 @@
 import React from "react";
 import Button from "../components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Check, Eye, Loader2, Trash2, Wrench } from "lucide-react";
 import { TableParagraph, TableStatus, TableText } from "../components/common/table-text";
+import { Lead } from "@/app/types/lead";
 
 export interface TableButtons {
   label: string;
   shortLabel?: string;
   icon?: React.ReactNode;
   onClick?: () => void;
+  hidden?: boolean;
 }
 
 export type Column<T> = {
-  key: keyof T | "checkbox" | "actions";
+  key: keyof T | "checkbox" | "actions" | string;
   label?: string;
   isCheckbox?: boolean;
   isActions?: boolean;
   cell?: (row: T) => React.ReactNode;
 };
 
+export type RowId = string | number;
+
 export type TableProps<T> = {
   columns: Column<T>[];
   data: T[];
-  selectedRows?: number[];
-  setSelectedRows?: React.Dispatch<React.SetStateAction<number[]>>;
+  selectedRows?: RowId[];
+  setSelectedRows?: React.Dispatch<React.SetStateAction<RowId[]>>;
 };
 
-export function generateLeadsColumns(onModalOpen: (id: number) => void): Column<any>[] {
+export type LeadColumnActions = {
+  onReview: (id: string) => void;
+  onFix: (id: string) => void;
+  onApprove: (id: string) => void;
+  onDelete: (id: string) => void;
+  busyLeadIds: Set<string>;
+};
+
+const sendStatusLabel: Record<Lead["outreach"]["sendStatus"], string> = {
+  not_sent: "Not Sent",
+  queued: "Queued",
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed",
+  skipped: "Skipped",
+};
+
+const aiReviewLabel: Record<Lead["aiReview"]["status"], string> = {
+  pending: "Pending",
+  approved: "✓ Approved",
+  warning: "⚠ Warning",
+};
+
+const approvalLabel: Record<Lead["outreach"]["approval"], string> = {
+  pending: "Pending",
+  approved: "Approved",
+};
+
+export function generateLeadsColumns(actions: LeadColumnActions): Column<Lead>[] {
   return [
     { key: "checkbox", isCheckbox: true },
-    { key: "businessName", label: "Business Name" },
-    { key: "category", label: "Category" },
-    { key: "city", label: "City" },
-    { key: "email", label: "Email" },
-    { key: "phone", label: "Phone" },
-    { key: "channel", label: "Channel" },
-    { key: "aiReview", label: "AI Review" },
-    { key: "approval", label: "Approval" },
-    { key: "sendStatus", label: "Send Status" },
+    {
+      key: "businessName",
+      label: "Business Name",
+      cell: (row) => <TableText text={row.businessName} />,
+    },
+    {
+      key: "category",
+      label: "Category",
+      cell: (row) => <TableParagraph text={row.category} className="text-foreground/80!" />,
+    },
+    {
+      key: "city",
+      label: "City",
+      cell: (row) => <TableParagraph text={row.city} className="font-mono tracking-tighter text-foreground/80!" />,
+    },
+    {
+      key: "email",
+      label: "Email",
+      cell: (row) => <TableParagraph text={row.email || "—"} />,
+    },
+    {
+      key: "phone",
+      label: "Phone",
+      cell: (row) => <TableParagraph text={row.phone || "—"} className="font-mono" />,
+    },
+    {
+      key: "channel",
+      label: "Channel",
+      cell: (row) => <TableStatus text={row.contactChannel === "email" ? "Email" : "Phone"} />,
+    },
+    {
+      key: "aiReview",
+      label: "AI Review",
+      cell: (row) => <TableStatus text={aiReviewLabel[row.aiReview.status]} />,
+    },
+    {
+      key: "approval",
+      label: "Approval",
+      cell: (row) => <TableStatus text={approvalLabel[row.outreach.approval]} />,
+    },
+    {
+      key: "sendStatus",
+      label: "Send Status",
+      cell: (row) => <TableStatus text={sendStatusLabel[row.outreach.sendStatus]} />,
+    },
     {
       key: "actions",
       label: "Actions",
       isActions: true,
-      cell: (row: any) => (
-        <div className="flex items-center gap-2">
-          <Button className="py-1.5! px-1.5! rounded-sm bg-red-700 border-transparent" onClick={() => onModalOpen(row?.id)}>
-            <Trash2 className="size-3.5" />
-          </Button>
-        </div>
-      ),
+      cell: (row) => {
+        const busy = actions.busyLeadIds.has(row.id);
+        const hasEmail = row.outreach.status !== "not_generated" && Boolean(row.outreach.subject);
+        const showFix = row.aiReview.status === "warning";
+        const showApprove =
+          row.aiReview.status === "approved" &&
+          row.outreach.approval === "pending" &&
+          row.outreach.status !== "not_generated";
+
+        return (
+          <div className="flex items-center gap-2">
+            {hasEmail && (
+              <Button
+                className="py-1.5! px-2! rounded-sm bg-slate-700 border-transparent"
+                onClick={() => actions.onReview(row.id)}
+                disabled={busy}
+                title="Review"
+              >
+                <Eye className="size-3.5" />
+              </Button>
+            )}
+
+            {showFix && (
+              <Button
+                className="py-1.5! px-2! rounded-sm bg-yellow-600 border-transparent"
+                onClick={() => actions.onFix(row.id)}
+                disabled={busy}
+                title="Fix"
+              >
+                {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Wrench className="size-3.5" />}
+              </Button>
+            )}
+
+            {showApprove && (
+              <Button
+                className="py-1.5! px-2! rounded-sm bg-purple-600 border-transparent"
+                onClick={() => actions.onApprove(row.id)}
+                disabled={busy}
+                title="Approve"
+              >
+                <Check className="size-3.5" />
+              </Button>
+            )}
+
+            <Button
+              className="py-1.5! px-1.5! rounded-sm bg-red-700 border-transparent"
+              onClick={() => actions.onDelete(row.id)}
+              disabled={busy}
+              title="Delete"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
-}
-
-const data = [
-  {
-    id: 1,
-    businessName: "NovaTech Solutions",
-    category: "Software Company",
-    city: "New York",
-    email: "hello@novatech.com",
-    phone: "+1-212-555-0142",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Sent",
-  },
-  {
-    id: 2,
-    businessName: "Bright Dental Care",
-    category: "Dental Clinic",
-    city: "Los Angeles",
-    email: "contact@brightdental.com",
-    phone: "+1-310-555-0187",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 3,
-    businessName: "Urban Fitness Studio",
-    category: "Fitness Center",
-    city: "Chicago",
-    email: "info@urbanfitness.com",
-    phone: "+1-773-555-0124",
-    channel: "Email",
-    aiReview: "Needs Fix",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 4,
-    businessName: "Green Leaf Cafe",
-    category: "Restaurant",
-    city: "San Francisco",
-    email: "hello@greenleafcafe.com",
-    phone: "+1-415-555-0193",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Sent",
-  },
-  {
-    id: 5,
-    businessName: "PixelCraft Agency",
-    category: "Digital Agency",
-    city: "Austin",
-    email: "hello@pixelcraft.com",
-    phone: "+1-512-555-0168",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Queued",
-  },
-  {
-    id: 6,
-    businessName: "Elite Auto Works",
-    category: "Auto Repair",
-    city: "Houston",
-    email: "service@eliteautoworks.com",
-    phone: "+1-713-555-0139",
-    channel: "Phone",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 7,
-    businessName: "Modern Home Interiors",
-    category: "Interior Design",
-    city: "Miami",
-    email: "info@modernhome.com",
-    phone: "+1-305-555-0172",
-    channel: "Email",
-    aiReview: "Needs Fix",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 8,
-    businessName: "Skyline Law Group",
-    category: "Law Firm",
-    city: "Boston",
-    email: "contact@skylinelegal.com",
-    phone: "+1-617-555-0118",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Sent",
-  },
-  {
-    id: 9,
-    businessName: "BlueWave Marketing",
-    category: "Marketing Agency",
-    city: "Seattle",
-    email: "hello@bluewave.com",
-    phone: "+1-206-555-0156",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 10,
-    businessName: "Prime Accounting Services",
-    category: "Accounting Firm",
-    city: "Denver",
-    email: "info@primeaccounting.com",
-    phone: "+1-303-555-0191",
-    channel: "Email",
-    aiReview: "Negative",
-    approval: "Rejected",
-    sendStatus: "Skipped",
-  },
-  {
-    id: 11,
-    businessName: "Sunrise Photography",
-    category: "Photography Studio",
-    city: "Phoenix",
-    email: "bookings@sunrisephoto.com",
-    phone: "+1-602-555-0147",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Queued",
-  },
-  {
-    id: 12,
-    businessName: "NextGen Education",
-    category: "Education Center",
-    city: "Dallas",
-    email: "hello@nextgenedu.com",
-    phone: "+1-214-555-0129",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 13,
-    businessName: "FreshMart Grocery",
-    category: "Grocery Store",
-    city: "Philadelphia",
-    email: "contact@freshmart.com",
-    phone: "+1-215-555-0163",
-    channel: "Phone",
-    aiReview: "Needs Fix",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 14,
-    businessName: "Oak & Stone Construction",
-    category: "Construction Company",
-    city: "San Diego",
-    email: "info@oakstone.com",
-    phone: "+1-619-555-0184",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Sent",
-  },
-  {
-    id: 15,
-    businessName: "Luxe Hair Studio",
-    category: "Hair Salon",
-    city: "Las Vegas",
-    email: "hello@luxehair.com",
-    phone: "+1-702-555-0135",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Queued",
-  },
-  {
-    id: 16,
-    businessName: "Rapid Logistics",
-    category: "Logistics Company",
-    city: "Atlanta",
-    email: "sales@rapidlogistics.com",
-    phone: "+1-404-555-0176",
-    channel: "Email",
-    aiReview: "Needs Fix",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 17,
-    businessName: "Evergreen Real Estate",
-    category: "Real Estate Agency",
-    city: "Portland",
-    email: "info@evergreenrealty.com",
-    phone: "+1-503-555-0112",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Sent",
-  },
-  {
-    id: 18,
-    businessName: "TechBridge Consulting",
-    category: "IT Consulting",
-    city: "San Jose",
-    email: "contact@techbridge.com",
-    phone: "+1-408-555-0198",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-  {
-    id: 19,
-    businessName: "Golden Spoon Bakery",
-    category: "Bakery",
-    city: "Orlando",
-    email: "hello@goldenspoon.com",
-    phone: "+1-407-555-0146",
-    channel: "Phone",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Queued",
-  },
-  {
-    id: 20,
-    businessName: "Wellness First Clinic",
-    category: "Medical Clinic",
-    city: "Charlotte",
-    email: "contact@wellnessfirst.com",
-    phone: "+1-704-555-0169",
-    channel: "Email",
-    aiReview: "Negative",
-    approval: "Rejected",
-    sendStatus: "Skipped",
-  },
-  {
-    id: 21,
-    businessName: "Silverline Architecture",
-    category: "Architecture Firm",
-    city: "Washington",
-    email: "studio@silverlinearch.com",
-    phone: "+1-202-555-0131",
-    channel: "Email",
-    aiReview: "Positive",
-    approval: "Approved",
-    sendStatus: "Sent",
-  },
-  {
-    id: 22,
-    businessName: "CraftHouse Furniture",
-    category: "Furniture Store",
-    city: "Nashville",
-    email: "sales@crafthouse.com",
-    phone: "+1-615-555-0189",
-    channel: "Email",
-    aiReview: "Needs Fix",
-    approval: "Pending",
-    sendStatus: "Not Sent",
-  },
-];
-
-export function generateLeadsData() {
-  return data?.map((lead) => {
-    return {
-      id: lead.id,
-      businessName: <TableText text={lead.businessName} />,
-      category: <TableParagraph text={lead.category} className="text-foreground/80!" />,
-      city: <TableParagraph text={lead.city} className="font-mono tracking-tighter text-foreground/80!" />,
-      email: <TableParagraph text={lead.email} />,
-      phone: <TableParagraph text={lead.phone} className="font-mono" />,
-      channel: <TableParagraph text={lead.channel} className="tracking-tight text-foreground/90!" />,
-      aiReview: <TableStatus text={lead.aiReview} />,
-      approval: <TableStatus text={lead.approval} />,
-      sendStatus: <TableStatus text={lead.sendStatus} />,
-    };
-  });
 }

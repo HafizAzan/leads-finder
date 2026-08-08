@@ -1,9 +1,9 @@
 "use client";
 import React from "react";
 import Checkbox from "./checkbox";
-import { TableProps } from "@/app/data/leads-data";
+import { RowId, TableProps } from "@/app/data/leads-data";
 
-function Table<T extends Record<string, unknown>>({ columns, data, selectedRows, setSelectedRows }: TableProps<T>) {
+function Table<T extends { id: RowId }>({ columns, data, selectedRows, setSelectedRows }: TableProps<T>) {
   const allRowsSelected = data?.length > 0 && selectedRows?.length === data?.length;
   const someSelectedRows = data?.length > 0 && selectedRows?.length! > 0 && selectedRows?.length! < data?.length;
 
@@ -11,17 +11,16 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
     if (allRowsSelected) {
       setSelectedRows?.([]);
     } else {
-      setSelectedRows?.(data?.map((row) => row.id as number) || []);
+      setSelectedRows?.(data?.map((row) => row.id) || []);
     }
   };
 
-  const specificRow = (id: number) => {
+  const specificRow = (id: RowId) => {
     setSelectedRows?.((prev) => {
       if (prev?.includes(id)) {
         return prev?.filter((rowID) => rowID !== id);
-      } else {
-        return [...prev, id];
       }
+      return [...prev, id];
     });
   };
 
@@ -50,36 +49,30 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
           </thead>
 
           <tbody>
-            {data.map((row, index) => (
-              <tr key={index} className="group border-b border-border last:border-0 transition-colors hover:bg-sidebar/60">
+            {data.map((row) => (
+              <tr key={String(row.id)} className="group border-b border-border last:border-0 transition-colors hover:bg-sidebar/60">
                 {columns.map((column) => {
                   if (column.isCheckbox) {
                     return (
                       <td key={String(column.key)} className="sticky left-0 z-10 w-12 bg-card px-3 py-3 transition-colors group-hover:bg-sidebar/60 sm:px-4">
-                        <Checkbox checked={selectedRows?.includes(row?.id as number)} onChange={() => specificRow(row?.id as number)} />
+                        <Checkbox checked={selectedRows?.includes(row.id)} onChange={() => specificRow(row.id)} />
                       </td>
                     );
                   }
 
-                  if (column.isActions) {
+                  if (column.cell) {
                     return (
                       <td key={String(column.key)} className="px-3 py-3 text-sm text-foreground whitespace-nowrap sm:px-4">
-                        {column.cell?.(row)}
+                        {column.cell(row)}
                       </td>
                     );
                   }
 
-                  if (row?.[column.key] && typeof row?.[column.key] === "object" && React.isValidElement(row?.[column.key])) {
-                    return (
-                      <td key={String(column.key)} className="px-3 py-3 text-sm text-foreground whitespace-nowrap sm:px-4">
-                        {row?.[column.key] as React.ReactNode}
-                      </td>
-                    );
-                  }
+                  const value = row[column.key as keyof T];
 
                   return (
                     <td key={String(column.key)} className="px-3 py-3 text-sm text-foreground whitespace-nowrap sm:px-4">
-                      {String(row[column.key])}
+                      {value == null ? "—" : String(value)}
                     </td>
                   );
                 })}
@@ -92,4 +85,4 @@ function Table<T extends Record<string, unknown>>({ columns, data, selectedRows,
   );
 }
 
-export default React.memo(Table);
+export default React.memo(Table) as typeof Table;

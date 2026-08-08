@@ -14,6 +14,7 @@ type LeadHeaderProps = {
 const pageTitles: Record<string, string> = {
   "/leads": "My Leads",
   "/leads/generate-leads": "Generate Leads",
+  "/leads/settings": "Settings",
 };
 
 function LeadHeader({ sidebarOpen = false, onMenuClick }: LeadHeaderProps) {

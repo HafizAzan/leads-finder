@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { LeadsProvider } from "@/app/context/leads-context";
+import { SettingsProvider } from "@/app/context/settings-context";
 import LeadHeader from "./lead-header";
 import LeadSidebar from "./lead-sidebar";
 
@@ -32,15 +34,19 @@ function LeadLayout({ children }: LeadLayoutProps) {
   }, [sidebarOpen, closeSidebar]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <LeadSidebar open={sidebarOpen} onClose={closeSidebar} />
+    <SettingsProvider>
+      <LeadsProvider>
+        <div className="flex h-screen overflow-hidden">
+          <LeadSidebar open={sidebarOpen} onClose={closeSidebar} />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <LeadHeader sidebarOpen={sidebarOpen} onMenuClick={toggleSidebar} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <LeadHeader sidebarOpen={sidebarOpen} onMenuClick={toggleSidebar} />
 
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
-      </div>
-    </div>
+            <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+          </div>
+        </div>
+      </LeadsProvider>
+    </SettingsProvider>
   );
 }
 
