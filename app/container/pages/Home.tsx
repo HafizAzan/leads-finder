@@ -1,4 +1,5 @@
 "use client";
+import EmptyPlaceholder from "@/app/components/common/empty-placeholder";
 import Search from "@/app/components/common/search";
 import Button from "@/app/components/ui/button";
 import Modal from "@/app/components/ui/modal";
@@ -6,9 +7,11 @@ import Pagination from "@/app/components/ui/pagination";
 import Table from "@/app/components/ui/table";
 import { generateLeadsColumns, generateLeadsData, TableButtons } from "@/app/data/leads-data";
 import { Download, Trash2, Upload, UsersRound } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 function Home() {
+  const router = useRouter();
   const rowsPerPage = 5;
   const [searchValue, setSearchValue] = useState<string>("");
   const [page, setPage] = useState<number>(1);
@@ -39,16 +42,20 @@ function Home() {
 
   const filteredData = data?.filter((row) => {
     return Object?.values(row)?.some((val) => {
-      const cellText = typeof val === "object" && val !== null && "props" in val ? (val.props as any)?.text : val;
+      const cellText = typeof val === "object" && val !== null && "props" in val ? (val.props as { text: string })?.text : val;
       return String(cellText).toLowerCase().includes(searchValue?.toLowerCase());
     });
   });
 
-  const totalPage = Math.ceil(filteredData?.length / rowsPerPage);
+  const totalPage = Math.max(1, Math.ceil((filteredData?.length || 0) / rowsPerPage));
   const startIndex = (page - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
 
   const currentData = filteredData?.slice(startIndex, endIndex);
+  const hasSourceData = data?.length > 0;
+  const hasFilteredData = filteredData?.length > 0;
+  const isSearchEmpty = hasSourceData && !hasFilteredData && searchValue.trim().length > 0;
+  const isListEmpty = !hasSourceData;
 
   const tableButtons: TableButtons[] =
     selectedRows?.length > 0
@@ -81,14 +88,21 @@ function Home() {
             label: "Generate New Leads",
             shortLabel: "Generate",
             icon: <UsersRound className="size-3.5" />,
-            onClick: () => {},
+            onClick: () => router.push("/leads/generate-leads"),
           },
         ];
 
   return (
     <section className="px-3 py-3 sm:px-4 sm:py-4">
       <div className="flex flex-col gap-3 pb-4 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <Search onChange={(val: string) => setSearchValue(val)} value={searchValue} />
+        <Search
+          onChange={(val: string) => {
+            setSearchValue(val);
+            setPage(1);
+            setSelectedRows([]);
+          }}
+          value={searchValue}
+        />
 
         <div className="flex w-full flex-wrap items-center gap-1 rounded-lg bg-card p-1.5 sm:w-auto sm:gap-2 sm:p-2">
           {tableButtons?.map((single: TableButtons, index: number) => (
@@ -107,8 +121,27 @@ function Home() {
         </div>
       </div>
 
-      <Table columns={columns} data={currentData} selectedRows={selectedRows} setSelectedRows={setSelectedRows} />
-      <Pagination currentPage={page} totalPages={totalPage} onPageChange={onPageChange} />
+      {isListEmpty ? (
+        <EmptyPlaceholder
+          variant="empty"
+          actionLabel="Generate New Leads"
+          onAction={() => router.push("/leads/generate-leads")}
+        />
+      ) : isSearchEmpty ? (
+        <EmptyPlaceholder
+          variant="search"
+          actionLabel="Clear search"
+          onAction={() => {
+            setSearchValue("");
+            setPage(1);
+          }}
+        />
+      ) : (
+        <>
+          <Table columns={columns} data={currentData} selectedRows={selectedRows} setSelectedRows={setSelectedRows} />
+          <Pagination currentPage={page} totalPages={totalPage} onPageChange={onPageChange} />
+        </>
+      )}
 
       <Modal
         open={open}
