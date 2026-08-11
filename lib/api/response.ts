@@ -33,8 +33,12 @@ export function handleApiError(error: unknown) {
     return fail("FIREBASE_NOT_CONFIGURED", message, 500);
   }
 
-  if (message.includes("OPENAI_API_KEY")) {
-    return fail("OPENAI_NOT_CONFIGURED", message, 500);
+  if (
+    message.includes("OPENAI_API_KEY") ||
+    message.includes("ANTHROPIC_API_KEY") ||
+    message.includes("No AI provider configured")
+  ) {
+    return fail("AI_NOT_CONFIGURED", message, 500);
   }
 
   // Surface Firestore setup issues instead of generic INTERNAL_ERROR
