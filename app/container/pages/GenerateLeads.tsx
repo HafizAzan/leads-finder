@@ -1,11 +1,14 @@
 "use client";
 
 import React, { FormEvent, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import Typography from "@/app/components/ui/typography";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
 import Textarea from "@/app/components/ui/textarea";
+import { ApiClientError, apiSend } from "@/lib/api/client";
+import { Lead } from "@/types/lead";
+import { useRouter } from "next/navigation";
 
 type GenerateLeadsForm = {
   category: string;
@@ -24,14 +27,39 @@ const initialForm: GenerateLeadsForm = {
 };
 
 function GenerateLeads() {
+  const router = useRouter();
   const [form, setForm] = useState<GenerateLeadsForm>(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const updateField = (field: keyof GenerateLeadsForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await apiSend<{ leads: Lead[]; source: string; warning?: string }>("/api/leads/generate", "POST", {
+        category: form.category.trim(),
+        city: form.city.trim(),
+        country: form.country.trim(),
+        limit: Number(form.leadLimit) || 1,
+        description: form.description.trim() || undefined,
+      });
+
+      if (result.warning) {
+        sessionStorage.setItem("leads-generate-warning", result.warning);
+      }
+
+      router.push("/leads");
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to generate leads.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,10 +73,14 @@ function GenerateLeads() {
           <Typography variants="h3" text="Generate new leads" className="mb-1.5 text-foreground" />
           <Typography
             variants="p"
-            text="Set your target market and lead limit. We’ll find matching businesses based on your filters."
+            text="Uses Google Places first. If Places fails or the key is missing, manual fallback leads are created."
             className="max-w-2xl text-sm!"
           />
         </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>
+        )}
 
         <form onSubmit={onSubmit} className="rounded-xl border border-border bg-card p-4 shadow-md sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -61,7 +93,6 @@ function GenerateLeads() {
               required
               autoComplete="off"
             />
-
             <Input
               name="city"
               label="City"
@@ -71,7 +102,6 @@ function GenerateLeads() {
               required
               autoComplete="address-level2"
             />
-
             <Input
               name="country"
               label="Country"
@@ -81,20 +111,18 @@ function GenerateLeads() {
               required
               autoComplete="country-name"
             />
-
             <Input
               name="leadLimit"
               type="number"
               label="Lead limit"
               placeholder="25"
               min={1}
-              max={500}
+              max={100}
               value={form.leadLimit}
               onChange={updateField("leadLimit")}
               required
-              hint="How many leads to generate (1–500)."
+              hint="How many leads to generate (1–100)."
             />
-
             <div className="sm:col-span-2">
               <Textarea
                 name="description"
@@ -113,13 +141,15 @@ function GenerateLeads() {
               type="button"
               label="Reset"
               onClick={() => setForm(initialForm)}
+              disabled={loading}
               className="border-border bg-transparent text-muted hover:bg-sidebar hover:text-foreground sm:min-w-28"
             />
             <Button
               type="submit"
+              disabled={loading}
               className="bg-purple-600 border-purple-600 hover:bg-purple-500 hover:border-purple-500 hover:opacity-100 sm:min-w-40"
             >
-              <Sparkles className="size-4" />
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
               Generate Leads
             </Button>
           </div>
