@@ -7,17 +7,25 @@ export type AiMessage = {
   content: string;
 };
 
+export type AiProvider = "ollama" | "claude" | "openai";
+
 export type AiChatResult = {
   content: string;
-  provider: "claude" | "openai";
+  provider: AiProvider;
 };
 
-type ProviderPreference = "auto" | "claude" | "openai";
+type ProviderPreference = "auto" | "ollama" | "claude" | "openai";
 
 function getProviderPreference(): ProviderPreference {
   const value = (process.env.AI_PROVIDER || "auto").toLowerCase();
-  if (value === "claude" || value === "openai" || value === "auto") return value;
+  if (value === "ollama" || value === "claude" || value === "openai" || value === "auto") {
+    return value;
+  }
   return "auto";
+}
+
+function hasOllama() {
+  return Boolean(process.env.OLLAMA_BASE_URL?.trim());
 }
 
 function hasClaude() {
@@ -26,6 +34,14 @@ function hasClaude() {
 
 function hasOpenAI() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
+function getOllamaBaseUrl() {
+  return process.env.OLLAMA_BASE_URL?.trim() || "http://localhost:11434/v1";
+}
+
+function getOllamaModel() {
+  return process.env.OLLAMA_MODEL || "llama3.2";
 }
 
 function getClaudeModel() {
@@ -38,6 +54,7 @@ function getOpenAIModel() {
 
 let anthropicClient: Anthropic | null = null;
 let openaiClient: OpenAI | null = null;
+let ollamaClient: OpenAI | null = null;
 
 function getAnthropicClient() {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -59,6 +76,16 @@ function getOpenAIClient() {
     openaiClient = new OpenAI({ apiKey });
   }
   return openaiClient;
+}
+
+function getOllamaClient() {
+  if (!ollamaClient) {
+    ollamaClient = new OpenAI({
+      apiKey: process.env.OLLAMA_API_KEY?.trim() || "ollama",
+      baseURL: getOllamaBaseUrl(),
+    });
+  }
+  return ollamaClient;
 }
 
 async function chatWithClaude(messages: AiMessage[]): Promise<AiChatResult> {
@@ -108,20 +135,37 @@ async function chatWithOpenAI(messages: AiMessage[]): Promise<AiChatResult> {
   return { content, provider: "openai" };
 }
 
-function resolveOrder(): Array<"claude" | "openai"> {
-  const preference = getProviderPreference();
-  if (preference === "claude") return ["claude"];
-  if (preference === "openai") return ["openai"];
+async function chatWithOllama(messages: AiMessage[]): Promise<AiChatResult> {
+  const completion = await getOllamaClient().chat.completions.create({
+    model: getOllamaModel(),
+    // Many local models honor JSON better via prompt than response_format.
+    messages,
+  });
 
-  // auto: Claude primary, OpenAI secondary
-  const order: Array<"claude" | "openai"> = [];
+  const content = completion.choices[0]?.message?.content?.trim();
+  if (!content) {
+    throw new AppError("AI_FAILURE", "Ollama did not return content.", 502);
+  }
+
+  return { content, provider: "ollama" };
+}
+
+function resolveOrder(): AiProvider[] {
+  const preference = getProviderPreference();
+  if (preference === "ollama") return hasOllama() ? ["ollama"] : [];
+  if (preference === "claude") return hasClaude() ? ["claude"] : [];
+  if (preference === "openai") return hasOpenAI() ? ["openai"] : [];
+
+  // auto: Ollama primary, Anthropic secondary, OpenAI tertiary
+  const order: AiProvider[] = [];
+  if (hasOllama()) order.push("ollama");
   if (hasClaude()) order.push("claude");
   if (hasOpenAI()) order.push("openai");
   return order;
 }
 
 /**
- * Chat completion with Claude as primary and OpenAI as fallback (when AI_PROVIDER=auto).
+ * Chat completion with Ollama primary, then Anthropic, then OpenAI (when AI_PROVIDER=auto).
  */
 export async function aiChat(messages: AiMessage[]): Promise<AiChatResult> {
   const order = resolveOrder();
@@ -129,7 +173,7 @@ export async function aiChat(messages: AiMessage[]): Promise<AiChatResult> {
   if (order.length === 0) {
     throw new AppError(
       "AI_NOT_CONFIGURED",
-      "No AI provider configured. Set ANTHROPIC_API_KEY (primary) and/or OPENAI_API_KEY (secondary).",
+      "No AI provider configured. Set OLLAMA_BASE_URL (primary), and/or ANTHROPIC_API_KEY, and/or OPENAI_API_KEY.",
       500,
     );
   }
@@ -138,12 +182,13 @@ export async function aiChat(messages: AiMessage[]): Promise<AiChatResult> {
 
   for (const provider of order) {
     try {
+      if (provider === "ollama") return await chatWithOllama(messages);
       if (provider === "claude") return await chatWithClaude(messages);
       return await chatWithOpenAI(messages);
     } catch (error) {
       lastError = error;
       console.error(`[ai] ${provider} failed, trying next provider if available.`, error);
-      // Only fall through to secondary when preference is auto and another provider remains.
+      // Only fall through when preference is auto and another provider remains.
       if (getProviderPreference() !== "auto" || order[order.length - 1] === provider) {
         break;
       }

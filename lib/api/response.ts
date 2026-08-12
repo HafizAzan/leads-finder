@@ -36,6 +36,7 @@ export function handleApiError(error: unknown) {
   if (
     message.includes("OPENAI_API_KEY") ||
     message.includes("ANTHROPIC_API_KEY") ||
+    message.includes("OLLAMA_BASE_URL") ||
     message.includes("No AI provider configured")
   ) {
     return fail("AI_NOT_CONFIGURED", message, 500);
