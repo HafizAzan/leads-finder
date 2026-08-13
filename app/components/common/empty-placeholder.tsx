@@ -9,6 +9,8 @@ type EmptyPlaceholderProps = {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 };
 
 function EmptyPlaceholder({
@@ -17,6 +19,8 @@ function EmptyPlaceholder({
   description,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
 }: EmptyPlaceholderProps) {
   const isSearch = variant === "search";
   const Icon = isSearch ? SearchX : Inbox;
@@ -37,15 +41,24 @@ function EmptyPlaceholder({
       <Typography variants="h4" text={resolvedTitle} className="mb-2 text-foreground" />
       <Typography variants="p" text={resolvedDescription} className="mb-6 max-w-md text-sm!" />
 
-      {actionLabel && onAction && (
-        <Button
-          type="button"
-          onClick={onAction}
-          className="bg-purple-600 border-purple-600 hover:bg-purple-500 hover:border-purple-500 hover:opacity-100"
-        >
-          {actionLabel}
-        </Button>
-      )}
+      {(actionLabel && onAction) || (secondaryActionLabel && onSecondaryAction) ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {actionLabel && onAction && (
+            <Button
+              type="button"
+              onClick={onAction}
+              className="bg-purple-600 border-purple-600 hover:bg-purple-500 hover:border-purple-500 hover:opacity-100"
+            >
+              {actionLabel}
+            </Button>
+          )}
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button type="button" onClick={onSecondaryAction}>
+              {secondaryActionLabel}
+            </Button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

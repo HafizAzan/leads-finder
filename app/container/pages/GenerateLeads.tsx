@@ -73,7 +73,7 @@ function GenerateLeads() {
           <Typography variants="h3" text="Generate new leads" className="mb-1.5 text-foreground" />
           <Typography
             variants="p"
-            text="Uses Google Places first. If Places fails or the key is missing, manual fallback leads are created."
+            text="Uses Google Places (paginated to your limit). Emails are scraped from websites when possible; otherwise phone/WhatsApp is used."
             className="max-w-2xl text-sm!"
           />
         </div>

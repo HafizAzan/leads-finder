@@ -5,6 +5,7 @@ export const collections = {
   leads: "leads",
   settings: "settings",
   emailQueue: "emailQueue",
+  whatsappQueue: "whatsappQueue",
 } as const;
 
 export function db() {

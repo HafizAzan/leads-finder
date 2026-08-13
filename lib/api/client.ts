@@ -43,3 +43,11 @@ export async function apiSend<T>(url: string, method: "POST" | "PATCH" | "DELETE
   });
   return parseResponse<T>(response);
 }
+
+export async function apiUpload<T>(url: string, formData: FormData): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+  return parseResponse<T>(response);
+}

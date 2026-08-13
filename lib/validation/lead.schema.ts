@@ -22,7 +22,51 @@ export const createLeadSchema = z.object({
   source: z.enum(["google_maps", "manual", "import"]).optional(),
 });
 
-export const updateLeadSchema = createLeadSchema.partial();
+const outreachUpdateSchema = z.object({
+  channel: z.enum(["email", "whatsapp"]).optional(),
+  subject: z.string().optional(),
+  body: z.string().optional(),
+  status: z
+    .enum([
+      "not_generated",
+      "generated",
+      "ready",
+      "queued",
+      "sending",
+      "sent",
+      "delivered",
+      "read",
+      "failed",
+      "skipped",
+    ])
+    .optional(),
+  approval: z.enum(["pending", "approved"]).optional(),
+  sendStatus: z
+    .enum(["not_sent", "queued", "sending", "sent", "delivered", "read", "failed", "skipped"])
+    .optional(),
+});
+
+const aiReviewUpdateSchema = z.object({
+  status: z.enum(["pending", "approved", "warning"]).optional(),
+  issues: z.array(z.string()).optional(),
+});
+
+export const updateLeadSchema = z.object({
+  businessName: z.string().trim().min(1).optional(),
+  category: z.string().trim().min(1).optional(),
+  city: z.string().trim().min(1).optional(),
+  country: z.string().trim().min(1).optional(),
+  description: z.string().trim().optional().or(z.literal("")),
+  email: z.union([z.literal(""), z.string().trim().email("Valid email required.")]).optional(),
+  phone: z.string().trim().optional().or(z.literal("")),
+  // Allow non-strict URLs from scrapes / manual edits
+  website: z.string().trim().optional().or(z.literal("")),
+  address: z.string().trim().optional().or(z.literal("")),
+  contactChannel: z.enum(["email", "phone", "none"]).optional(),
+  source: z.enum(["google_maps", "manual", "import"]).optional(),
+  outreach: outreachUpdateSchema.optional(),
+  aiReview: aiReviewUpdateSchema.optional(),
+});
 
 export const bulkIdsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, "At least one id is required."),

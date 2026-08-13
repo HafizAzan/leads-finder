@@ -23,11 +23,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const { id } = await params;
     const body = await req.json();
     const input = updateLeadSchema.parse(body);
-    const lead = await updateLead(user.id, id, {
-      ...input,
-      email: input.email || undefined,
-      website: input.website || undefined,
-    });
+    const lead = await updateLead(user.id, id, input);
     return ok(lead);
   } catch (error) {
     return handleApiError(error);

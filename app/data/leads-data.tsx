@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "../components/ui/button";
-import { Check, Eye, Loader2, Trash2, Wrench } from "lucide-react";
+import { Check, Eye, FileText, Loader2, Trash2, Wrench } from "lucide-react";
 import { TableParagraph, TableStatus, TableText } from "../components/common/table-text";
 import { Lead } from "@/types/lead";
 
@@ -27,9 +27,11 @@ export type TableProps<T> = {
   data: T[];
   selectedRows?: RowId[];
   setSelectedRows?: React.Dispatch<React.SetStateAction<RowId[]>>;
+  isRowSelectable?: (row: T) => boolean;
 };
 
 export type LeadColumnActions = {
+  onView: (id: string) => void;
   onReview: (id: string) => void;
   onFix: (id: string) => void;
   onApprove: (id: string) => void;
@@ -42,6 +44,8 @@ const sendStatusLabel: Record<Lead["outreach"]["sendStatus"], string> = {
   queued: "Queued",
   sending: "Sending",
   sent: "Sent",
+  delivered: "Delivered",
+  read: "Read",
   failed: "Failed",
   skipped: "Skipped",
 };
@@ -59,7 +63,7 @@ const approvalLabel: Record<Lead["outreach"]["approval"], string> = {
 
 const channelLabel: Record<Lead["contactChannel"], string> = {
   email: "Email",
-  phone: "Phone",
+  phone: "WhatsApp",
   none: "None",
 };
 
@@ -69,7 +73,16 @@ export function generateLeadsColumns(actions: LeadColumnActions): Column<Lead>[]
     {
       key: "businessName",
       label: "Business Name",
-      cell: (row) => <TableText text={row.businessName} />,
+      cell: (row) => (
+        <button
+          type="button"
+          onClick={() => actions.onView(row.id)}
+          className="text-left transition-colors hover:text-purple-300"
+          title="View details"
+        >
+          <TableText text={row.businessName} />
+        </button>
+      ),
     },
     {
       key: "category",
@@ -90,6 +103,25 @@ export function generateLeadsColumns(actions: LeadColumnActions): Column<Lead>[]
       key: "phone",
       label: "Phone",
       cell: (row) => <TableParagraph text={row.phone || "—"} className="font-mono" />,
+    },
+    {
+      key: "website",
+      label: "Website",
+      cell: (row) =>
+        row.website ? (
+          <a
+            href={row.website}
+            target="_blank"
+            rel="noreferrer"
+            className="block max-w-[180px] truncate text-sm text-purple-300 hover:text-purple-200"
+            title={row.website}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {row.website.replace(/^https?:\/\//i, "")}
+          </a>
+        ) : (
+          <TableParagraph text="—" />
+        ),
     },
     {
       key: "channel",
@@ -117,23 +149,33 @@ export function generateLeadsColumns(actions: LeadColumnActions): Column<Lead>[]
       isActions: true,
       cell: (row) => {
         const busy = actions.busyLeadIds.has(row.id);
-        const hasEmail = Boolean(row.outreach.subject && row.outreach.body);
+        const hasOutreach =
+          Boolean(row.outreach.body) &&
+          (row.outreach.channel === "whatsapp" || Boolean(row.outreach.subject));
         const showFix = row.aiReview.status === "warning";
         const showApprove =
           row.aiReview.status === "approved" &&
           row.outreach.approval === "pending" &&
-          hasEmail;
+          hasOutreach;
 
         return (
           <div className="flex items-center gap-2">
-            {hasEmail && (
+            <Button
+              className="py-1.5! px-2! rounded-sm bg-slate-800 border-transparent"
+              onClick={() => actions.onView(row.id)}
+              disabled={busy}
+              title="View details"
+            >
+              <Eye className="size-3.5" />
+            </Button>
+            {hasOutreach && (
               <Button
                 className="py-1.5! px-2! rounded-sm bg-slate-700 border-transparent"
                 onClick={() => actions.onReview(row.id)}
                 disabled={busy}
-                title="Review"
+                title="Review outreach"
               >
-                <Eye className="size-3.5" />
+                <FileText className="size-3.5" />
               </Button>
             )}
             {showFix && (

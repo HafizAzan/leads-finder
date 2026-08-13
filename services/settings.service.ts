@@ -10,6 +10,10 @@ const defaults = {
   emailConnected: false,
   minDelay: 10,
   maxDelay: 90,
+  whatsappConnected: false,
+  whatsappDisplayNumber: "",
+  whatsappMinDelay: 10,
+  whatsappMaxDelay: 90,
 };
 
 export type GmailTokenSettings = {
@@ -28,6 +32,10 @@ function mapSettings(id: string, data: Record<string, unknown> | undefined): Ser
     emailConnected: Boolean(data?.emailConnected),
     minDelay: typeof data?.minDelay === "number" ? data.minDelay : defaults.minDelay,
     maxDelay: typeof data?.maxDelay === "number" ? data.maxDelay : defaults.maxDelay,
+    whatsappConnected: Boolean(data?.whatsappConnected),
+    whatsappDisplayNumber: typeof data?.whatsappDisplayNumber === "string" ? data.whatsappDisplayNumber : "",
+    whatsappMinDelay: typeof data?.whatsappMinDelay === "number" ? data.whatsappMinDelay : defaults.whatsappMinDelay,
+    whatsappMaxDelay: typeof data?.whatsappMaxDelay === "number" ? data.whatsappMaxDelay : defaults.whatsappMaxDelay,
     createdAt: toIso(data?.createdAt),
     updatedAt: toIso(data?.updatedAt),
     gmailAccessToken: typeof data?.gmailAccessToken === "string" ? data.gmailAccessToken : null,
@@ -44,6 +52,10 @@ export function toPublicSettings(settings: ServerSettings): UserSettings {
     emailConnected: settings.emailConnected,
     minDelay: settings.minDelay,
     maxDelay: settings.maxDelay,
+    whatsappConnected: settings.whatsappConnected,
+    whatsappDisplayNumber: settings.whatsappDisplayNumber,
+    whatsappMinDelay: settings.whatsappMinDelay,
+    whatsappMaxDelay: settings.whatsappMaxDelay,
     createdAt: settings.createdAt,
     updatedAt: settings.updatedAt,
   };
@@ -76,7 +88,7 @@ export async function getSettings(userId: string): Promise<ServerSettings> {
   return mapSettings(userId, snap.data() as Record<string, unknown>);
 }
 
-type UpdateSettingsInput = {
+export type UpdateSettingsInput = {
   emailProvider?: "gmail" | "smtp";
   emailAddress?: string;
   emailConnected?: boolean;
@@ -86,19 +98,51 @@ type UpdateSettingsInput = {
   gmailAccessToken?: string | null;
   gmailRefreshToken?: string | null;
   gmailTokenExpiry?: number | null;
+  whatsappDisplayNumber?: string;
+  whatsappConnected?: boolean;
+  whatsappMinDelay?: number;
+  whatsappMaxDelay?: number;
+  disconnectWhatsApp?: boolean;
 };
+
+export async function syncWhatsAppConnectionToSettings(
+  userId: string,
+  input: { connected: boolean; displayNumber: string },
+) {
+  await db()
+    .collection(collections.settings)
+    .doc(userId)
+    .set(
+      {
+        whatsappConnected: input.connected,
+        whatsappDisplayNumber: input.displayNumber,
+        // Clear legacy Meta Cloud fields if present
+        whatsappAccessToken: null,
+        whatsappPhoneNumberId: "",
+        whatsappTemplateName: "",
+        whatsappTemplateLanguage: "",
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+}
 
 export async function updateSettings(userId: string, input: UpdateSettingsInput): Promise<ServerSettings> {
   const current = await getSettings(userId);
 
   const nextMin = input.minDelay ?? current.minDelay;
   const nextMax = input.maxDelay ?? current.maxDelay;
+  const nextWaMin = input.whatsappMinDelay ?? current.whatsappMinDelay;
+  const nextWaMax = input.whatsappMaxDelay ?? current.whatsappMaxDelay;
 
-  if (nextMin < 0) {
+  if (nextMin < 0 || nextWaMin < 0) {
     throw new AppError("INVALID_INPUT", "Minimum delay cannot be negative.");
   }
   if (nextMax < nextMin) {
     throw new AppError("INVALID_INPUT", "Maximum delay cannot be smaller than minimum.");
+  }
+  if (nextWaMax < nextWaMin) {
+    throw new AppError("INVALID_INPUT", "WhatsApp maximum delay cannot be smaller than minimum.");
   }
 
   if (input.disconnect) {
@@ -114,7 +158,27 @@ export async function updateSettings(userId: string, input: UpdateSettingsInput)
           gmailTokenExpiry: null,
           minDelay: nextMin,
           maxDelay: nextMax,
+          whatsappMinDelay: nextWaMin,
+          whatsappMaxDelay: nextWaMax,
           emailProvider: input.emailProvider ?? current.emailProvider,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    return getSettings(userId);
+  }
+
+  if (input.disconnectWhatsApp) {
+    await syncWhatsAppConnectionToSettings(userId, { connected: false, displayNumber: "" });
+    await db()
+      .collection(collections.settings)
+      .doc(userId)
+      .set(
+        {
+          whatsappMinDelay: nextWaMin,
+          whatsappMaxDelay: nextWaMax,
+          minDelay: nextMin,
+          maxDelay: nextMax,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
@@ -128,12 +192,16 @@ export async function updateSettings(userId: string, input: UpdateSettingsInput)
     emailConnected: input.emailConnected ?? current.emailConnected,
     minDelay: nextMin,
     maxDelay: nextMax,
+    whatsappMinDelay: nextWaMin,
+    whatsappMaxDelay: nextWaMax,
     updatedAt: FieldValue.serverTimestamp(),
   };
 
   if (input.gmailAccessToken !== undefined) payload.gmailAccessToken = input.gmailAccessToken;
   if (input.gmailRefreshToken !== undefined) payload.gmailRefreshToken = input.gmailRefreshToken;
   if (input.gmailTokenExpiry !== undefined) payload.gmailTokenExpiry = input.gmailTokenExpiry;
+  if (input.whatsappConnected !== undefined) payload.whatsappConnected = input.whatsappConnected;
+  if (input.whatsappDisplayNumber !== undefined) payload.whatsappDisplayNumber = input.whatsappDisplayNumber;
 
   await db().collection(collections.settings).doc(userId).set(payload, { merge: true });
   return getSettings(userId);

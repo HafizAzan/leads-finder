@@ -19,6 +19,7 @@ type EmailReviewModalProps = {
 function EmailReviewModal({ open, lead, busy = false, onClose, onFix, onApprove }: EmailReviewModalProps) {
   if (!lead) return null;
 
+  const isWhatsApp = lead.outreach.channel === "whatsapp";
   const canApprove = lead.aiReview.status === "approved" && lead.outreach.approval === "pending";
   const canFix = lead.aiReview.status === "warning";
 
@@ -26,7 +27,7 @@ function EmailReviewModal({ open, lead, busy = false, onClose, onFix, onApprove 
     <Modal
       open={open}
       onClose={onClose}
-      title="Email Review"
+      title={isWhatsApp ? "WhatsApp Review" : "Email Review"}
       description={lead.businessName}
       size="lg"
       footer={
@@ -55,20 +56,34 @@ function EmailReviewModal({ open, lead, busy = false, onClose, onFix, onApprove 
             <Typography variants="p" text={lead.businessName} className="text-sm! text-foreground" />
           </div>
           <div>
-            <Typography variants="span" text="Email" className="mb-1 block text-xs! text-muted" />
-            <Typography variants="p" text={lead.email || "—"} className="text-sm! text-foreground" />
+            <Typography
+              variants="span"
+              text={isWhatsApp ? "Phone" : "Email"}
+              className="mb-1 block text-xs! text-muted"
+            />
+            <Typography
+              variants="p"
+              text={isWhatsApp ? lead.phone || "—" : lead.email || "—"}
+              className="text-sm! text-foreground"
+            />
           </div>
         </div>
 
-        <div>
-          <Typography variants="span" text="Subject" className="mb-1 block text-xs! text-muted" />
-          <div className="rounded-lg border border-border bg-sidebar px-3 py-2 text-sm text-foreground">
-            {lead.outreach.subject || "—"}
+        {!isWhatsApp && (
+          <div>
+            <Typography variants="span" text="Subject" className="mb-1 block text-xs! text-muted" />
+            <div className="rounded-lg border border-border bg-sidebar px-3 py-2 text-sm text-foreground">
+              {lead.outreach.subject || "—"}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
-          <Typography variants="span" text="Email Body" className="mb-1 block text-xs! text-muted" />
+          <Typography
+            variants="span"
+            text={isWhatsApp ? "Message" : "Email Body"}
+            className="mb-1 block text-xs! text-muted"
+          />
           <div className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-sidebar px-3 py-2 text-sm leading-6 text-foreground">
             {lead.outreach.body || "—"}
           </div>
@@ -78,18 +93,19 @@ function EmailReviewModal({ open, lead, busy = false, onClose, onFix, onApprove 
           {lead.aiReview.status === "approved" ? (
             <Typography variants="p" text="✓ AI Review Approved" className="text-sm! text-green-400" />
           ) : lead.aiReview.status === "warning" ? (
-            <div className="space-y-2">
-              <Typography variants="p" text="⚠ Needs Attention" className="text-sm! text-yellow-400" />
-              <ul className="list-disc space-y-1 pl-5">
-                {lead.aiReview.issues.map((issue) => (
-                  <li key={issue} className="text-sm text-muted">
-                    {issue}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Typography variants="p" text="⚠ Needs Attention" className="text-sm! text-yellow-400" />
           ) : (
             <Typography variants="p" text="AI review pending" className="text-sm! text-muted" />
+          )}
+
+          {lead.aiReview.issues.length > 0 && (
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {lead.aiReview.issues.map((issue) => (
+                <li key={issue} className="text-sm text-muted">
+                  {issue}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>

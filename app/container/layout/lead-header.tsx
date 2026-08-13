@@ -17,9 +17,17 @@ const pageTitles: Record<string, string> = {
   "/leads/settings": "Settings",
 };
 
+function resolveTitle(pathname: string) {
+  if (pageTitles[pathname]) return pageTitles[pathname];
+  if (/^\/leads\/[^/]+$/.test(pathname) && pathname !== "/leads/generate-leads" && pathname !== "/leads/settings") {
+    return "Lead Details";
+  }
+  return "AI Lead Finder";
+}
+
 function LeadHeader({ sidebarOpen = false, onMenuClick }: LeadHeaderProps) {
   const pathname = usePathname();
-  const title = pageTitles[pathname] ?? "AI Lead Finder";
+  const title = resolveTitle(pathname);
 
   return (
     <header className="border-b border-border bg-header px-3 py-3 shadow-md sm:px-5 sm:py-4 lg:px-6 lg:py-6">

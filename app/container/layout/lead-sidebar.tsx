@@ -62,7 +62,19 @@ export default React.memo(LeadSidebar);
 
 const LeadSidebarItems = ({ items, onNavigate }: LeadSidebarItemsProps) => {
   const pathname = usePathname();
-  const isActive = (href: string) => pathname === href || (href !== "/leads" && pathname.startsWith(`${href}/`));
+  const isActive = (href: string) => {
+    if (pathname === href) return true;
+    if (href === "/leads") {
+      return (
+        pathname.startsWith("/leads/") &&
+        pathname !== "/leads/generate-leads" &&
+        pathname !== "/leads/settings" &&
+        !pathname.startsWith("/leads/generate-leads/") &&
+        !pathname.startsWith("/leads/settings/")
+      );
+    }
+    return pathname.startsWith(`${href}/`);
+  };
 
   return (
     <nav className="space-y-1">

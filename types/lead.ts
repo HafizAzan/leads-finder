@@ -1,5 +1,6 @@
 export type ContactChannel = "email" | "phone" | "none";
 export type LeadSource = "google_maps" | "manual" | "import";
+export type OutreachChannel = "email" | "whatsapp";
 
 export type AiReviewStatus = "pending" | "approved" | "warning";
 export type OutreachStatus =
@@ -9,10 +10,20 @@ export type OutreachStatus =
   | "queued"
   | "sending"
   | "sent"
+  | "delivered"
+  | "read"
   | "failed"
   | "skipped";
 export type ApprovalStatus = "pending" | "approved";
-export type SendStatus = "not_sent" | "queued" | "sending" | "sent" | "failed" | "skipped";
+export type SendStatus =
+  | "not_sent"
+  | "queued"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed"
+  | "skipped";
 export type EmailProvider = "gmail" | "smtp";
 export type QueueStatus = "queued" | "sending" | "sent" | "failed" | "cancelled";
 
@@ -23,7 +34,7 @@ export type LeadAiReview = {
 };
 
 export type LeadOutreach = {
-  channel: "email" | "phone";
+  channel: OutreachChannel;
   subject?: string;
   body?: string;
   status: OutreachStatus;
@@ -32,6 +43,7 @@ export type LeadOutreach = {
   generatedAt?: string | null;
   approvedAt?: string | null;
   sentAt?: string | null;
+  whatsappMessageId?: string | null;
 };
 
 export type Lead = {
@@ -61,6 +73,10 @@ export type UserSettings = {
   emailConnected: boolean;
   minDelay: number;
   maxDelay: number;
+  whatsappConnected: boolean;
+  whatsappDisplayNumber: string;
+  whatsappMinDelay: number;
+  whatsappMaxDelay: number;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
@@ -72,6 +88,21 @@ export type EmailQueueItem = {
   businessName?: string;
   email: string;
   subject: string;
+  body: string;
+  status: QueueStatus;
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  delaySeconds: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type WhatsAppQueueItem = {
+  id: string;
+  userId: string;
+  leadId: string;
+  businessName?: string;
+  phone: string;
   body: string;
   status: QueueStatus;
   scheduledAt?: string | null;

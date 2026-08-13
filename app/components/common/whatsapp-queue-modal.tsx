@@ -6,17 +6,17 @@ import Button from "@/app/components/ui/button";
 import Typography from "@/app/components/ui/typography";
 import { TableStatus } from "@/app/components/common/table-text";
 import { apiGet } from "@/lib/api/client";
-import { EmailQueueItem } from "@/types/lead";
+import { WhatsAppQueueItem } from "@/types/lead";
 
-type EmailQueueModalProps = {
+type WhatsAppQueueModalProps = {
   open: boolean;
-  items: EmailQueueItem[];
+  items: WhatsAppQueueItem[];
   message?: string | null;
   onClose: () => void;
-  onItemsChange?: (items: EmailQueueItem[]) => void;
+  onItemsChange?: (items: WhatsAppQueueItem[]) => void;
 };
 
-const statusLabel: Record<EmailQueueItem["status"], string> = {
+const statusLabel: Record<WhatsAppQueueItem["status"], string> = {
   queued: "Queued",
   sending: "Sending",
   sent: "Sent",
@@ -24,7 +24,7 @@ const statusLabel: Record<EmailQueueItem["status"], string> = {
   cancelled: "Skipped",
 };
 
-function remainingForItem(item: EmailQueueItem, nowMs: number, openedAtMs: number) {
+function remainingForItem(item: WhatsAppQueueItem, nowMs: number, openedAtMs: number) {
   if (item.status === "sent" || item.status === "failed" || item.status === "cancelled") {
     return 0;
   }
@@ -36,12 +36,11 @@ function remainingForItem(item: EmailQueueItem, nowMs: number, openedAtMs: numbe
     }
   }
 
-  // Fallback if scheduledAt missing: count down from when modal opened.
   const elapsed = Math.floor((nowMs - openedAtMs) / 1000);
   return Math.max(0, item.delaySeconds - elapsed);
 }
 
-function EmailQueueModal({ open, items, message, onClose, onItemsChange }: EmailQueueModalProps) {
+function WhatsAppQueueModal({ open, items, message, onClose, onItemsChange }: WhatsAppQueueModalProps) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [openedAtMs, setOpenedAtMs] = useState(() => Date.now());
 
@@ -68,16 +67,14 @@ function EmailQueueModal({ open, items, message, onClose, onItemsChange }: Email
     (row) => row.item.status === "queued" || row.item.status === "sending" || row.remaining > 0,
   );
 
-  // Poll server so status flips to sent/failed when backend finishes.
   useEffect(() => {
     if (!open || !hasActive || !onItemsChange) return;
 
     const poll = window.setInterval(() => {
-      void apiGet<EmailQueueItem[]>("/api/email/queue")
+      void apiGet<WhatsAppQueueItem[]>("/api/whatsapp/queue")
         .then((latest) => {
           const byId = new Map(latest.map((entry) => [entry.id, entry]));
-          const merged = items.map((item) => byId.get(item.id) || item);
-          onItemsChange(merged);
+          onItemsChange(items.map((item) => byId.get(item.id) || item));
         })
         .catch(() => undefined);
     }, 2000);
@@ -89,8 +86,8 @@ function EmailQueueModal({ open, items, message, onClose, onItemsChange }: Email
     <Modal
       open={open}
       onClose={onClose}
-      title="Email Send Queue"
-      description={message || "Queued emails waiting for a configured provider/worker."}
+      title="WhatsApp Send Queue"
+      description={message || "Queued WhatsApp messages with configured delays."}
       size="xl"
       footer={
         <Button onClick={onClose} className="border-border bg-transparent text-muted hover:bg-sidebar hover:text-foreground">
@@ -102,9 +99,9 @@ function EmailQueueModal({ open, items, message, onClose, onItemsChange }: Email
         <Typography variants="p" text="Queue is empty." className="text-sm!" />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border">
-          <div className="hidden grid-cols-[1.4fr_1.4fr_0.8fr_0.7fr] gap-2 border-b border-border bg-sidebar px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted sm:grid">
+          <div className="hidden grid-cols-[1.4fr_1.2fr_0.8fr_0.7fr] gap-2 border-b border-border bg-sidebar px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted sm:grid">
             <span>Business Name</span>
-            <span>Email</span>
+            <span>Phone</span>
             <span>Status</span>
             <span>Delay</span>
           </div>
@@ -112,14 +109,14 @@ function EmailQueueModal({ open, items, message, onClose, onItemsChange }: Email
             {rows.map(({ item, remaining, displayStatus }) => (
               <div
                 key={item.id}
-                className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-[1.4fr_1.4fr_0.8fr_0.7fr] sm:items-center"
+                className="grid grid-cols-1 gap-2 px-3 py-3 sm:grid-cols-[1.4fr_1.2fr_0.8fr_0.7fr] sm:items-center"
               >
                 <Typography
                   variants="span"
                   text={item.businessName || item.leadId}
                   className="truncate text-sm! text-foreground"
                 />
-                <Typography variants="span" text={item.email} className="truncate text-sm! text-muted" />
+                <Typography variants="span" text={item.phone} className="truncate font-mono text-sm! text-muted" />
                 <div className="flex items-center justify-between gap-3 sm:contents">
                   <TableStatus text={statusLabel[displayStatus]} />
                   <Typography
@@ -143,4 +140,4 @@ function EmailQueueModal({ open, items, message, onClose, onItemsChange }: Email
   );
 }
 
-export default React.memo(EmailQueueModal);
+export default React.memo(WhatsAppQueueModal);

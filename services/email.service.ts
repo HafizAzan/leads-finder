@@ -77,7 +77,8 @@ export async function queueEmails(userId: string, leadIds: string[]) {
   const queuedItems: EmailQueueItem[] = [];
   let cumulativeDelay = 0;
 
-  for (const leadId of leadIds) {
+  for (let index = 0; index < leadIds.length; index += 1) {
+    const leadId = leadIds[index];
     try {
       const lead = await getLeadForUser(userId, leadId);
 
@@ -94,7 +95,8 @@ export async function queueEmails(userId: string, leadIds: string[]) {
         throw new AppError("EMAIL_REQUIRED", "Lead must have subject and body.");
       }
 
-      const delaySeconds = getRandomDelay(settings.minDelay, settings.maxDelay);
+      // First message (or single lead) sends immediately; delay only spaces subsequent sends.
+      const delaySeconds = index === 0 ? 0 : getRandomDelay(settings.minDelay, settings.maxDelay);
       cumulativeDelay += delaySeconds;
       const scheduledAt = new Date(Date.now() + cumulativeDelay * 1000);
       const ref = db().collection(collections.emailQueue).doc();

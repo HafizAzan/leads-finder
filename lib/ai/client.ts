@@ -36,12 +36,18 @@ function hasOpenAI() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
-function getOllamaBaseUrl() {
+/** OpenAI-compatible base (…/v1) */
+function getOllamaOpenAiBaseUrl() {
   return process.env.OLLAMA_BASE_URL?.trim() || "http://localhost:11434/v1";
 }
 
+/** Native Ollama host (no /v1) */
+function getOllamaNativeBaseUrl() {
+  return getOllamaOpenAiBaseUrl().replace(/\/v1\/?$/, "");
+}
+
 function getOllamaModel() {
-  return process.env.OLLAMA_MODEL || "llama3.2";
+  return process.env.OLLAMA_MODEL || "qwen3:4b";
 }
 
 function getClaudeModel() {
@@ -54,7 +60,6 @@ function getOpenAIModel() {
 
 let anthropicClient: Anthropic | null = null;
 let openaiClient: OpenAI | null = null;
-let ollamaClient: OpenAI | null = null;
 
 function getAnthropicClient() {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -78,16 +83,6 @@ function getOpenAIClient() {
   return openaiClient;
 }
 
-function getOllamaClient() {
-  if (!ollamaClient) {
-    ollamaClient = new OpenAI({
-      apiKey: process.env.OLLAMA_API_KEY?.trim() || "ollama",
-      baseURL: getOllamaBaseUrl(),
-    });
-  }
-  return ollamaClient;
-}
-
 async function chatWithClaude(messages: AiMessage[]): Promise<AiChatResult> {
   const system = messages
     .filter((m) => m.role === "system")
@@ -102,7 +97,7 @@ async function chatWithClaude(messages: AiMessage[]): Promise<AiChatResult> {
 
   const response = await getAnthropicClient().messages.create({
     model: getClaudeModel(),
-    max_tokens: 2048,
+    max_tokens: 1024,
     system: system || undefined,
     messages: conversation,
   });
@@ -117,7 +112,7 @@ async function chatWithClaude(messages: AiMessage[]): Promise<AiChatResult> {
     throw new AppError("AI_FAILURE", "Claude did not return content.", 502);
   }
 
-  return { content, provider: "claude" };
+  return { content: cleanAiJsonContent(content), provider: "claude" };
 }
 
 async function chatWithOpenAI(messages: AiMessage[]): Promise<AiChatResult> {
@@ -132,22 +127,93 @@ async function chatWithOpenAI(messages: AiMessage[]): Promise<AiChatResult> {
     throw new AppError("AI_FAILURE", "OpenAI did not return content.", 502);
   }
 
-  return { content, provider: "openai" };
+  return { content: cleanAiJsonContent(content), provider: "openai" };
 }
 
+/**
+ * Native Ollama /api/chat — supports think:false (critical for qwen3 speed).
+ */
 async function chatWithOllama(messages: AiMessage[]): Promise<AiChatResult> {
-  const completion = await getOllamaClient().chat.completions.create({
-    model: getOllamaModel(),
-    // Many local models honor JSON better via prompt than response_format.
-    messages,
-  });
+  const timeoutMs = Number(process.env.OLLAMA_TIMEOUT_MS || 25000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const content = completion.choices[0]?.message?.content?.trim();
-  if (!content) {
-    throw new AppError("AI_FAILURE", "Ollama did not return content.", 502);
+  try {
+    const response = await fetch(`${getOllamaNativeBaseUrl()}/api/chat`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: getOllamaModel(),
+        stream: false,
+        think: false,
+        format: "json",
+        options: {
+          temperature: 0.2,
+          num_predict: 500,
+        },
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      }),
+    });
+
+    const json = (await response.json().catch(() => ({}))) as {
+      message?: { content?: string };
+      error?: string;
+    };
+
+    if (!response.ok) {
+      throw new AppError(
+        "AI_FAILURE",
+        json.error || `Ollama request failed (${response.status}). Is the model pulled?`,
+        502,
+      );
+    }
+
+    const raw = json.message?.content?.trim() || "";
+    const content = cleanAiJsonContent(raw);
+    if (!content) {
+      throw new AppError("AI_FAILURE", "Ollama did not return content.", 502);
+    }
+
+    return { content, provider: "ollama" };
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+
+    const message = error instanceof Error ? error.message : String(error);
+    const aborted =
+      (error instanceof Error && error.name === "AbortError") || /aborted|abort|timeout/i.test(message);
+
+    if (aborted) {
+      throw new AppError(
+        "AI_FAILURE",
+        `Ollama timed out after ${Math.round(timeoutMs / 1000)}s. Try a faster model (e.g. llama3.2) or set OPENAI_API_KEY.`,
+        504,
+      );
+    }
+
+    throw new AppError(
+      "AI_FAILURE",
+      message.includes("fetch failed") || message.includes("ECONNREFUSED")
+        ? "Cannot reach Ollama. Is `ollama serve` running on localhost:11434?"
+        : message,
+      502,
+    );
+  } finally {
+    clearTimeout(timer);
   }
+}
 
-  return { content, provider: "ollama" };
+function cleanAiJsonContent(raw: string) {
+  let text = raw.trim();
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  text = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    text = text.slice(firstBrace, lastBrace + 1);
+  }
+  return text.trim();
 }
 
 function resolveOrder(): AiProvider[] {
@@ -156,7 +222,6 @@ function resolveOrder(): AiProvider[] {
   if (preference === "claude") return hasClaude() ? ["claude"] : [];
   if (preference === "openai") return hasOpenAI() ? ["openai"] : [];
 
-  // auto: Ollama primary, Anthropic secondary, OpenAI tertiary
   const order: AiProvider[] = [];
   if (hasOllama()) order.push("ollama");
   if (hasClaude()) order.push("claude");
@@ -164,9 +229,6 @@ function resolveOrder(): AiProvider[] {
   return order;
 }
 
-/**
- * Chat completion with Ollama primary, then Anthropic, then OpenAI (when AI_PROVIDER=auto).
- */
 export async function aiChat(messages: AiMessage[]): Promise<AiChatResult> {
   const order = resolveOrder();
 
@@ -187,8 +249,13 @@ export async function aiChat(messages: AiMessage[]): Promise<AiChatResult> {
       return await chatWithOpenAI(messages);
     } catch (error) {
       lastError = error;
-      console.error(`[ai] ${provider} failed, trying next provider if available.`, error);
-      // Only fall through when preference is auto and another provider remains.
+      const message = error instanceof Error ? error.message : String(error);
+      const isTimeout = /timed out|aborted/i.test(message);
+      if (isTimeout) {
+        console.warn(`[ai] ${provider} timed out, trying next provider if available.`);
+      } else {
+        console.error(`[ai] ${provider} failed, trying next provider if available.`, error);
+      }
       if (getProviderPreference() !== "auto" || order[order.length - 1] === provider) {
         break;
       }
